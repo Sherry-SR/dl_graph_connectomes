@@ -1,0 +1,56 @@
+# Set a fixed random seed for reproducibility, or null
+manual_seed: null
+# model configuration
+model:
+  # model class
+  name: GcnNet
+  # number of input channels to the model
+  in_channels: 1
+  # number of output classes
+  out_channels: 2
+  # number of nodes
+  num_nodes: 80
+# trainer configuration
+trainer:
+  # path to the checkpoint directory
+  checkpoint_dir: /Users/sherryshen/Dropbox/PhD/gcn/checkpoints
+  # path to latest checkpoint or null; if provided the training will be resumed
+  resume: null
+  # how many iterations between validations, null if validate every epoch
+  validate_after_iters: null
+  # how many iterations between tensorboard logging
+  log_after_iters: null
+  # how many iterations evaluated in validations, set null for evaluating whole val set
+  validate_iters: null
+  # max number of epochs
+  epochs: 100
+  # max number of iterations, set null for finishing all epochs
+  iters: null
+  # model with higher eval score is considered better
+  eval_score_higher_is_better: True
+# optimizer configuration
+optimizer:
+  # initial learning rate
+  learning_rate: 0.0001
+  # weight decay
+  weight_decay: 0.001
+# loss function configuration
+loss:
+  # loss function to be used during training
+  name: XX
+# evaluation metric configuration
+eval_metric:
+  # evaluation metric to be used during training
+  name: XX
+lr_scheduler:
+  name: MultiStepLR
+  milestones: [10, 30, 60]
+  gamma: 0.2
+# data loaders configuration
+loaders:
+  # paths to the training datasets
+  train_path: xx
+  # paths to the validation datasets
+  val_path: xx
+  # batch size in training process
+  batch_size: 4
