@@ -1,17 +1,11 @@
 import importlib
 import argparse
-import pickle
 
 import torch
-import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch_geometric.data import DataLoader
-from torch_geometric.nn import GCNConv
 
-from models.gcn.model import GcnNet
-from utils.visualize import VisdomLinePlotter
-from utils.data_handler import ConnectomeSet
+from utils.data_handler import get_data_loaders
 from utils.helper import get_logger, get_number_of_learnable_parameters
 from utils.config import load_config
 from utils.trainer import Trainer
@@ -112,7 +106,7 @@ def main():
     # Create the model
     module_path = "models.gcn.model"
     if torch.cuda.device_count() > 1:
-        model = nn.DataParallel(_get_model(module_path, config))
+        model = torch.nn.DataParallel(_get_model(module_path, config))
     else:
         model = _get_model(module_path, config)
 
@@ -128,7 +122,7 @@ def main():
     eval_criterion = get_evaluation_metric(config)
 
     # Create data loaders
-    loaders = create_data_loaders(config)
+    loaders = get_data_loaders(config)
 
     # Create the optimizer
     optimizer = _create_optimizer(config, model)

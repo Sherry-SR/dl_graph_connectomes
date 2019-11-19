@@ -108,3 +108,7 @@ venv.bak/
 
 # Mac
 .DS_Store
+
+# Data
+checkpoints/*
+useless/
