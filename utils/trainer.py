@@ -7,6 +7,7 @@ import numpy as np
 import torch
 from tensorboardX import SummaryWriter
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch_geometric.data import Data
 
 from utils.helper import RunningAverage, save_checkpoint, load_checkpoint, get_logger
 
@@ -36,8 +37,6 @@ class Trainer:
         best_eval_score (float): best validation score so far (higher better)
         num_iterations (int): useful when loading the model from the checkpoint
         num_epoch (int): useful when loading the model from the checkpoint
-        align_start_iters (int): number of iterations before alignment start
-        align_after_iters (int): number of iterations between two alignment steps
     """
 
     def __init__(self, model, optimizer, lr_scheduler, loss_criterion,
@@ -162,17 +161,17 @@ class Trainer:
             self.max_num_iterations = self.max_num_epochs * len(train_loader)
 
         for i, t in enumerate(train_loader):
-            target = t.y
-            input = t.to(device)
+            target = t.y.to(self.device)
+            input = t.to(self.device)
             output = self.model(input)
 
             # compute loss criterion
             loss = self.loss_criterion(output, target)
-            train_losses.update(loss.item(), self._batch_size(input))
+            train_losses.update(loss.item(), self._batch_size(target))
 
             # compute eval criterion
             eval_score = self.eval_criterion(output, target)
-            train_eval_scores.update(eval_score.item(), self._batch_size(input))
+            train_eval_scores.update(eval_score.item(), self._batch_size(target))
 
             # compute gradients and update parameters
             self.optimizer.zero_grad()
@@ -231,21 +230,21 @@ class Trainer:
                 for i in tqdm(range(self.validate_iters)):
                     try:
                         t = next(val_iterator)
-                        target = t.y
                     except StopIteration:
                         val_iterator = iter(val_loader)
                         t = next(val_iterator)
 
-                    input = t.to(device)
+                    target = t.y.to(self.device)
+                    input = t.to(self.device)
                     output = self.model(input)
 
                     # compute loss criterion
                     loss = self.loss_criterion(output, target)
-                    val_losses.update(loss.item(), self._batch_size(input))
+                    val_losses.update(loss.item(), self._batch_size(target))
 
                     # compute eval criterion
                     eval_score = self.eval_criterion(output, target)
-                    val_scores.update(eval_score.item(), self._batch_size(input))
+                    val_scores.update(eval_score.item(), self._batch_size(target))
 
                 self._log_stats('val', val_losses.avg, val_scores.avg)
                 self.logger.info(f'Validation finished. Loss: {val_losses.avg}. Evaluation score: {val_scores.avg}')
@@ -309,5 +308,7 @@ class Trainer:
     def _batch_size(input):
         if isinstance(input, list) or isinstance(input, tuple):
             return input[0].size(0)
+        if isinstance(input, Data):
+            return input.num_graphs
         else:
             return input.size(0)

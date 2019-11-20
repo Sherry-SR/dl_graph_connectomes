@@ -8,6 +8,8 @@ import scipy.sparse as sparse
 
 import numpy as np
 import torch
+import torch_geometric.nn as gnn
+import torch.nn.init as init
 
 def save_checkpoint(state, is_best, checkpoint_dir, logger=None):
     """Saves model and training parameters at '{checkpoint_dir}/last_checkpoint.pytorch'.
@@ -28,7 +30,8 @@ def save_checkpoint(state, is_best, checkpoint_dir, logger=None):
             f"Checkpoint directory does not exists. Creating {checkpoint_dir}")
         os.mkdir(checkpoint_dir)
 
-    last_file_path = os.path.join(checkpoint_dir, 'last_checkpoint_iter'+str(state['num_iterations'])+'.pytorch')
+    #last_file_path = os.path.join(checkpoint_dir, 'last_checkpoint_iter'+str(state['num_iterations'])+'.pytorch')
+    last_file_path = os.path.join(checkpoint_dir, 'last_checkpoint_iter.pytorch')
     log_info(f"Saving last checkpoint to '{last_file_path}'")
     torch.save(state, last_file_path)
     if is_best:
@@ -76,7 +79,6 @@ def get_logger(name, level=logging.INFO):
 
     return logger
 
-
 def get_number_of_learnable_parameters(model):
     model_parameters = filter(lambda p: p.requires_grad, model.parameters())
     return sum([np.prod(p.size()) for p in model_parameters])
@@ -87,6 +89,14 @@ def get_param(model):
         if param.requires_grad:
             paramlist.append((name, param))
     return paramlist
+
+def weights_init(m):
+    if isinstance(m, gnn.GCNConv):
+        init.xavier_normal_(m.weight.data)
+        init.constant_(m.bias.data, 0)
+    if isinstance(m, torch.nn.Linear):
+        init.xavier_normal_(m.weight.data)
+        init.normal_(m.bias.data)
 
 class RunningAverage:
     """Computes and stores the average
