@@ -9,11 +9,11 @@ model:
   # number of output classes
   out_channels: 2
   # number of nodes
-  num_nodes: 80
+  num_nodes: 161
 # trainer configuration
 trainer:
   # path to the checkpoint directory
-  checkpoint_dir: /home/sherry/Dropbox/PhD/gcn/checkpoints
+  checkpoint_dir: /home/sherry/Dropbox/PhD/dl_graph_connectomes/checkpoints
   # path to latest checkpoint or null; if provided the training will be resumed
   resume: null
   # how many iterations between validations, null if validate every epoch
@@ -49,23 +49,23 @@ lr_scheduler:
 # data loaders configuration
 loaders:
   # name of the dataset
-  name: PNCEnrichedSet
+  name: ABIDESet
   # root path to save the created dataset
-  root: /home/sherry/Dropbox/PhD/Data/PNC_Enriched/pnc_enriched_exp01
+  root: /home/sherry/Dropbox/PhD/Data/ABIDE/abide_exp01
   # paths to the training list file
-  train_list: /home/sherry/Dropbox/PhD/Data/PNC_Enriched/pnc_enriched_exp01/train_list.txt
+  train_list: /home/sherry/Dropbox/PhD/Data/ABIDE/abide_exp01/train_list.txt
   # output filename for training dataset
   output_train: train_exp01.pkl
   # paths to the validation list file
-  val_list: /home/sherry/Dropbox/PhD/Data/PNC_Enriched/pnc_enriched_exp01/val_list.txt
+  val_list: /home/sherry/Dropbox/PhD/Data/ABIDE/abide_exp01/val_list.txt
   # output filename for validation dataset
   output_val: val_exp01.pkl
   # path to origianl data folder
-  path_data: /home/sherry/Dropbox/PhD/Data/PNC_Enriched/Enriched_Connectomes
+  path_data: /home/sherry/Dropbox/PhD/Data/ABIDE/ABIDE_Connectomes
   # path to origianl label file
-  path_label: /home/sherry/Dropbox/PhD/Data/PNC_Enriched/Enriched_Connectomes_GO1_n968_LTN_dtiQApass_t1QApass_fsQApass.xlsx
+  path_label: /home/sherry/Dropbox/PhD/Data/ABIDE/ABIDE_Connectomes_Phenotypic_V1_0b_preprocessed.xlsx
   # prediction target name
-  target_name: Sex
+  target_name: SEX
   # index of features to keep
   feature_mask: null
   # batch size in training process

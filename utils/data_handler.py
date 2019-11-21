@@ -9,6 +9,7 @@ import itertools
 from operator import itemgetter
 from openpyxl import load_workbook
 import pickle
+from shutil import copyfile
 
 import torch
 from torch_geometric.utils import dense_to_sparse
@@ -33,6 +34,18 @@ def train_val_test_split(path, output, train_ratio, val_ratio, test_ratio):
     np.savetxt(os.path.join(output,'test_list.txt'), test_list, fmt='%s', delimiter='\n')
     print('filelist saved to:', output)
 
+def arrange_data(path, output):
+    subpaths = [f.path for f in os.scandir(path) if f.is_dir()]
+    for subpath in subpaths:
+        filelist = os.listdir(subpath)
+        for filename in filelist:
+            subj, ext = os.path.splitext(filename)
+            out_subpath = os.path.join(output, subj)
+            if not os.path.exists(out_subpath):
+                os.mkdir(out_subpath)
+            out_filename = os.path.basename(path)+'_'+os.path.basename(subpath)+'_matrix'+ext
+            copyfile(os.path.join(subpath, filename), os.path.join(out_subpath, out_filename))
+
 def read_xlsx(path):
     workbook = load_workbook(path)
     sheet = workbook[workbook.sheetnames[0]]
@@ -42,7 +55,107 @@ def read_xlsx(path):
     data = (itertools.islice(r, 0, None) for r in data)
     df = pd.DataFrame(data, columns = cols)
     return df
+
+class ABIDESet(InMemoryDataset):
+    def __init__(self, sub_list, output, root, path_data, path_label, target_name = None, feature_mask = None, **kwargs):
+        self.path = [path_data, path_label]
+        self.output = output
+        if sub_list is None:
+            sub_list = os.listdir(path_data)
+        self.sub_list = sub_list
+        self.target_name = target_name
+        self.feature_mask = feature_mask
+        super(ABIDESet, self).__init__(root)
+        self.data, self.slices = torch.load(self.processed_paths[0])
+
+    @property
+    def raw_file_names(self):
+        return ['abide_raw.pkl']
+
+    @property
+    def processed_file_names(self):
+        return [self.output]
+
+    def download(self):
+        assert len(self.path) == 2
+        path_data = self.path[0]
+        path_label = self.path[1]
+        
+        labels = read_xlsx(path_label)
+        labels = labels.astype({'subject': 'str'})
+        labels['SITE_ID'], uniques = pd.factorize(labels['SITE_ID'])
+        labels['DX_GROUP'] = 2 - labels['DX_GROUP']
+        labels['SEX'] = labels['SEX'] - 1
+
+        labels = itemgetter('SITE_ID','DX_GROUP','DSM_IV_TR','AGE_AT_SCAN','SEX')(labels.set_index('subject').to_dict())
+        
+        subjlist = os.listdir(path_data)
+        filelist = [fname for fname in os.listdir(os.path.join(path_data, subjlist[0])) if 'matrix' in fname]
+
+        with open(os.path.join(self.raw_dir, 'pnc_enriched_raw_info.txt'), 'w') as f:
+            print('Label info:', file = f)
+            print('All labels:', 'SITE_ID','DX_GROUP','DSM_IV_TR','AGE_AT_SCAN','SEX')
+            print('Site labels (0-n):', uniques.values, file = f)
+            print('DX_GROUP (0/1):', 'control, autism', file = f)
+            print('DSM_IV_TR (0-n):', 'control, autism, aspergers, PDD-NOS, aspergers or PDD-NOS', file = f)
+            print('SEX:', 'M, F', file = f)
+            print('\n', file = f)
+            print('Features:', file = f)
+            print(filelist, sep='\n', file = f)
+            print('\n', file = f)
+            print('Saved subjects:', file = f)
+            print(subjlist, sep='\n', file = f)
+            print('\n', file = f)
+
+        dataset = {}
+        for subj in subjlist:
+            print('downloading', subj, '...')
+            filepath = os.path.join(path_data, subj, 'dos160_cov_matrix.txt')
+            # origianl value (-1 ~ 1), adjust value of the matrix to 0 ~ 2
+            matrix = torch.tensor(np.loadtxt(filepath), dtype=torch.float) + 1
+            edge_index, value = dense_to_sparse(matrix)
+            y = {'SITE_ID': labels[0][subj], 'DX_GROUP': labels[1][subj], 'DSM_IV_TR': labels[2][subj],
+                    'AGE_AT_SCAN': labels[3][subj], 'SEX': labels[4][subj]}
+            x = torch.ones([matrix.shape[0], 1], dtype=torch.float)
+            features = []
+            for file in filelist:
+                filepath = os.path.join(path_data, subj, file)
+                # origianl value (-1 ~ 1), adjust value of the matrix to 0 ~ 2
+                matrix = torch.tensor(np.loadtxt(filepath), dtype=torch.float) + 1
+                features.append(matrix[edge_index[0], edge_index[1]])     
+            data = Data(x = x, edge_index = edge_index, edge_attr = value, y = y)
+            data.features = features           
+            dataset[subj] = data
     
+        with open(os.path.join(self.raw_dir, 'abide_raw.pkl'), 'wb') as f:
+            pickle.dump(dataset, f)
+            print('ABIDE dataset saved to path:', self.raw_dir)
+        
+    def process(self):
+        with open(os.path.join(self.raw_dir, 'abide_raw.pkl'), 'rb') as f:
+            dataset = pickle.load(f)
+
+        dataset_list = []
+        
+        sub_list = np.loadtxt(self.sub_list, dtype = str, delimiter = '\n')
+
+        for subj in sub_list:
+            data = dataset[subj]
+            if self.target_name is not None:
+                data.y = data.y[self.target_name]
+            if self.feature_mask is not None:
+                data.enriched = [data.enriched[i] for i in self.feature_mask]
+            data.features = torch.stack(data.features, dim = -1)
+            dataset_list.append(data)
+            
+        self.data, self.slices = self.collate(dataset_list)
+        torch.save((self.data, self.slices), self.processed_paths[0])
+        print('Processed dataset saved as', self.processed_paths[0])
+
+    def __repr__(self):
+        return '{}()'.format(self.__class__.__name__)
+
+
 class PNCEnrichedSet(InMemoryDataset):
     def __init__(self, sub_list, output, root, path_data, path_label, target_name = None, feature_mask = None, **kwargs):
         self.path = [path_data, path_label]
@@ -82,6 +195,7 @@ class PNCEnrichedSet(InMemoryDataset):
 
         with open(os.path.join(self.raw_dir, 'pnc_enriched_raw_info.txt'), 'w') as f:
             print('Label info:', file = f)
+            print('All labels:', 'ScanAgeYears','Sex')
             print('Sex labels (0/1):', uniques.values, file = f)
             print('\n', file = f)
             print('Enriched features:', file = f)
@@ -126,7 +240,7 @@ class PNCEnrichedSet(InMemoryDataset):
                 data.y = data.y[self.target_name]
             if self.feature_mask is not None:
                 data.enriched = [data.enriched[i] for i in self.feature_mask]
-            data.enriched = torch.stack(data.enriched, dim=-1)
+            data.enriched = torch.stack(data.enriched, dim = -1)
             dataset_list.append(data)
             
         self.data, self.slices = self.collate(dataset_list)
