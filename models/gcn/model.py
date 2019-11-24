@@ -16,10 +16,9 @@ class GcnNet(torch.nn.Module):
         self.relu = torch.nn.LeakyReLU()
     
     def forward(self, data):
-        x, edge_index, edge_attr, batch = data.x, data.edge_index, data.edge_attr, data.batch
+        x, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
         x = self.conv1(x, edge_index, edge_attr)
         x = F.leaky_relu(x)
-        x = F.dropout(x, p = 0.2, training = self.training)
         x = self.conv2(x, edge_index, edge_attr)
         x = F.leaky_relu(x)
 

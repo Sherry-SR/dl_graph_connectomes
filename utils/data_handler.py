@@ -70,7 +70,7 @@ class ABIDESet(InMemoryDataset):
 
     @property
     def raw_file_names(self):
-        return ['abide_raw.pkl']
+        return ['abide_raw.pkl', 'abide_raw_info.txt']
 
     @property
     def processed_file_names(self):
@@ -92,13 +92,13 @@ class ABIDESet(InMemoryDataset):
         subjlist = os.listdir(path_data)
         filelist = [fname for fname in os.listdir(os.path.join(path_data, subjlist[0])) if 'matrix' in fname]
 
-        with open(os.path.join(self.raw_dir, 'pnc_enriched_raw_info.txt'), 'w') as f:
+        with open(os.path.join(self.raw_dir, 'abide_raw_info.txt'), 'w') as f:
             print('Label info:', file = f)
             print('All labels:', 'SITE_ID','DX_GROUP','DSM_IV_TR','AGE_AT_SCAN','SEX')
             print('Site labels (0-n):', uniques.values, file = f)
             print('DX_GROUP (0/1):', 'control, autism', file = f)
             print('DSM_IV_TR (0-n):', 'control, autism, aspergers, PDD-NOS, aspergers or PDD-NOS', file = f)
-            print('SEX:', 'M, F', file = f)
+            print('SEX (0/1):', 'M, F', file = f)
             print('\n', file = f)
             print('Features:', file = f)
             print(filelist, sep='\n', file = f)

@@ -65,7 +65,7 @@ loaders:
   # path to origianl label file
   path_label: /home/sherry/Dropbox/PhD/Data/ABIDE/ABIDE_Connectomes_Phenotypic_V1_0b_preprocessed.xlsx
   # prediction target name
-  target_name: SEX
+  target_name: DX_GROUP
   # index of features to keep
   feature_mask: null
   # batch size in training process
