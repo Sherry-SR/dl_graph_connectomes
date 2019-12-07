@@ -110,20 +110,17 @@ class ABIDESet(InMemoryDataset):
         dataset = {}
         for subj in subjlist:
             print('downloading', subj, '...')
-            filepath = os.path.join(path_data, subj, 'dos160_cov_matrix.txt')
-            # origianl value (-1 ~ 1), adjust value of the matrix to 0 ~ 2
-            matrix = torch.tensor(np.loadtxt(filepath), dtype=torch.float) + 1
-            edge_index, value = dense_to_sparse(matrix)
-            y = {'SITE_ID': labels[0][subj], 'DX_GROUP': labels[1][subj], 'DSM_IV_TR': labels[2][subj],
-                    'AGE_AT_SCAN': labels[3][subj], 'SEX': labels[4][subj]}
-            x = torch.ones([matrix.shape[0], 1], dtype=torch.float)
             features = []
             for file in filelist:
                 filepath = os.path.join(path_data, subj, file)
                 # origianl value (-1 ~ 1), adjust value of the matrix to 0 ~ 2
                 matrix = torch.tensor(np.loadtxt(filepath), dtype=torch.float) + 1
-                features.append(matrix[edge_index[0], edge_index[1]])     
-            data = Data(x = x, edge_index = edge_index, edge_attr = value, y = y)
+                features.append(matrix)
+            
+            y = {'SITE_ID': labels[0][subj], 'DX_GROUP': labels[1][subj], 'DSM_IV_TR': labels[2][subj],
+                    'AGE_AT_SCAN': labels[3][subj], 'SEX': labels[4][subj]}
+            x = torch.ones([matrix.shape[0], 1], dtype=torch.float)
+            data = Data(x = x, y = y)
             data.features = features           
             dataset[subj] = data
     
@@ -144,8 +141,16 @@ class ABIDESet(InMemoryDataset):
             if self.target_name is not None:
                 data.y = data.y[self.target_name]
             if self.feature_mask is not None:
-                data.enriched = [data.enriched[i] for i in self.feature_mask]
+                data.features = [data.features[i] for i in self.feature_mask]
+
+            edge_index, _ = dense_to_sparse(torch.ones(data.features[0].shape, dtype=torch.float))
+            edge_attr = []
+            for feature in data.features:
+                edge_attr.append(feature[edge_index[0], edge_index[1]])
+            data.edge_index = edge_index
+            data.edge_attr = torch.stack(edge_attr, dim = -1)
             data.features = torch.stack(data.features, dim = -1)
+            data.features = torch.unsqueeze(data.features, dim = 0)
             dataset_list.append(data)
             
         self.data, self.slices = self.collate(dataset_list)
