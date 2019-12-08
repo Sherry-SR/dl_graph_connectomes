@@ -16,7 +16,10 @@ from torch_geometric.utils import dense_to_sparse
 from torch_geometric.data import Data, InMemoryDataset, DataLoader
 
 def train_val_test_split(path, output, train_ratio, val_ratio, test_ratio):
-    filelist = os.listdir(path)
+    if os.path.splitext(path)[1] == '.txt':
+        filelist = np.loadtxt(path, dtype=str)
+    else:
+        filelist = os.listdir(path)
     np.random.shuffle(filelist)
 
     sum_ratio = train_ratio + val_ratio + test_ratio
@@ -34,6 +37,9 @@ def train_val_test_split(path, output, train_ratio, val_ratio, test_ratio):
     np.savetxt(os.path.join(output,'test_list.txt'), test_list, fmt='%s', delimiter='\n')
     print('filelist saved to:', output)
 
+#train_val_test_split('/home/sherry/Dropbox/PhD/Data/ABIDE/ABIDE_Connectomes', '/home/sherry/Dropbox/PhD/Data/ABIDE/abide_exp01', 0.7, 0.2, 0.1)
+#train_val_test_split('/home/sherry/Dropbox/PhD/Data/ABIDE/abide_qc.txt', '/home/sherry/Dropbox/PhD/Data/ABIDE/abide_exp01', 0.7, 0.2, 0.1)
+
 def arrange_data(path, output):
     subpaths = [f.path for f in os.scandir(path) if f.is_dir()]
     for subpath in subpaths:
@@ -45,6 +51,8 @@ def arrange_data(path, output):
                 os.mkdir(out_subpath)
             out_filename = os.path.basename(path)+'_'+os.path.basename(subpath)+'_matrix'+ext
             copyfile(os.path.join(subpath, filename), os.path.join(out_subpath, out_filename))
+
+#arrange_data('/home/sherry/Dropbox/PhD/Data/ABIDE/raw_data/dos160', '/home/sherry/Dropbox/PhD/Data/ABIDE/ABIDE_Connectomes')
 
 def read_xlsx(path):
     workbook = load_workbook(path)
@@ -110,20 +118,17 @@ class ABIDESet(InMemoryDataset):
         dataset = {}
         for subj in subjlist:
             print('downloading', subj, '...')
-            filepath = os.path.join(path_data, subj, 'dos160_cov_matrix.txt')
-            # origianl value (-1 ~ 1), adjust value of the matrix to 0 ~ 2
-            matrix = torch.tensor(np.loadtxt(filepath), dtype=torch.float) + 1
-            edge_index, value = dense_to_sparse(matrix)
-            y = {'SITE_ID': labels[0][subj], 'DX_GROUP': labels[1][subj], 'DSM_IV_TR': labels[2][subj],
-                    'AGE_AT_SCAN': labels[3][subj], 'SEX': labels[4][subj]}
-            x = torch.ones([matrix.shape[0], 1], dtype=torch.float)
             features = []
             for file in filelist:
                 filepath = os.path.join(path_data, subj, file)
                 # origianl value (-1 ~ 1), adjust value of the matrix to 0 ~ 2
                 matrix = torch.tensor(np.loadtxt(filepath), dtype=torch.float) + 1
-                features.append(matrix[edge_index[0], edge_index[1]])     
-            data = Data(x = x, edge_index = edge_index, edge_attr = value, y = y)
+                features.append(matrix)
+            
+            y = {'SITE_ID': labels[0][subj], 'DX_GROUP': labels[1][subj], 'DSM_IV_TR': labels[2][subj],
+                    'AGE_AT_SCAN': labels[3][subj], 'SEX': labels[4][subj]}
+            x = torch.ones([matrix.shape[0], 1], dtype=torch.float)
+            data = Data(x = x, y = y)
             data.features = features           
             dataset[subj] = data
     
@@ -144,8 +149,16 @@ class ABIDESet(InMemoryDataset):
             if self.target_name is not None:
                 data.y = data.y[self.target_name]
             if self.feature_mask is not None:
-                data.enriched = [data.enriched[i] for i in self.feature_mask]
+                data.features = [data.features[i] for i in self.feature_mask]
+
+            edge_index, _ = dense_to_sparse(torch.ones(data.features[0].shape, dtype=torch.float))
+            edge_attr = []
+            for feature in data.features:
+                edge_attr.append(feature[edge_index[0], edge_index[1]])
+            data.edge_index = edge_index
+            data.edge_attr = torch.stack(edge_attr, dim = -1)
             data.features = torch.stack(data.features, dim = -1)
+            data.features = torch.unsqueeze(data.features, dim = 0)
             dataset_list.append(data)
             
         self.data, self.slices = self.collate(dataset_list)
@@ -257,8 +270,10 @@ def get_data_loaders(config):
     class_name = loaders_config.pop('name')
     train_list = loaders_config.pop('train_list')
     val_list = loaders_config.pop('val_list')
+    test_list = loaders_config.pop('test_list')
     output_train = loaders_config.pop('output_train')
     output_val = loaders_config.pop('output_val')
+    output_test = loaders_config.pop('output_test')
     batch_size = loaders_config.pop('batch_size')
 
     m = importlib.import_module('utils.data_handler')
@@ -266,5 +281,6 @@ def get_data_loaders(config):
 
     return {
         'train': DataLoader(clazz(train_list, output_train, **loaders_config), batch_size=batch_size, shuffle=True),
-        'val': DataLoader(clazz(val_list, output_val, **loaders_config), batch_size=batch_size, shuffle=True)
+        'val': DataLoader(clazz(val_list, output_val, **loaders_config), batch_size=batch_size, shuffle=True),
+        'test': DataLoader(clazz(test_list, output_test, **loaders_config), batch_size=batch_size, shuffle=True)
         }
