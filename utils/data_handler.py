@@ -16,7 +16,10 @@ from torch_geometric.utils import dense_to_sparse
 from torch_geometric.data import Data, InMemoryDataset, DataLoader
 
 def train_val_test_split(path, output, train_ratio, val_ratio, test_ratio):
-    filelist = os.listdir(path)
+    if os.path.splitext(path)[1] == '.txt':
+        filelist = np.loadtxt(path, dtype=str)
+    else:
+        filelist = os.listdir(path)
     np.random.shuffle(filelist)
 
     sum_ratio = train_ratio + val_ratio + test_ratio
@@ -34,6 +37,9 @@ def train_val_test_split(path, output, train_ratio, val_ratio, test_ratio):
     np.savetxt(os.path.join(output,'test_list.txt'), test_list, fmt='%s', delimiter='\n')
     print('filelist saved to:', output)
 
+#train_val_test_split('/home/sherry/Dropbox/PhD/Data/ABIDE/ABIDE_Connectomes', '/home/sherry/Dropbox/PhD/Data/ABIDE/abide_exp01', 0.7, 0.2, 0.1)
+#train_val_test_split('/home/sherry/Dropbox/PhD/Data/ABIDE/abide_qc.txt', '/home/sherry/Dropbox/PhD/Data/ABIDE/abide_exp01', 0.7, 0.2, 0.1)
+
 def arrange_data(path, output):
     subpaths = [f.path for f in os.scandir(path) if f.is_dir()]
     for subpath in subpaths:
@@ -45,6 +51,8 @@ def arrange_data(path, output):
                 os.mkdir(out_subpath)
             out_filename = os.path.basename(path)+'_'+os.path.basename(subpath)+'_matrix'+ext
             copyfile(os.path.join(subpath, filename), os.path.join(out_subpath, out_filename))
+
+#arrange_data('/home/sherry/Dropbox/PhD/Data/ABIDE/raw_data/dos160', '/home/sherry/Dropbox/PhD/Data/ABIDE/ABIDE_Connectomes')
 
 def read_xlsx(path):
     workbook = load_workbook(path)
@@ -262,8 +270,10 @@ def get_data_loaders(config):
     class_name = loaders_config.pop('name')
     train_list = loaders_config.pop('train_list')
     val_list = loaders_config.pop('val_list')
+    test_list = loaders_config.pop('test_list')
     output_train = loaders_config.pop('output_train')
     output_val = loaders_config.pop('output_val')
+    output_test = loaders_config.pop('output_test')
     batch_size = loaders_config.pop('batch_size')
 
     m = importlib.import_module('utils.data_handler')
@@ -271,5 +281,6 @@ def get_data_loaders(config):
 
     return {
         'train': DataLoader(clazz(train_list, output_train, **loaders_config), batch_size=batch_size, shuffle=True),
-        'val': DataLoader(clazz(val_list, output_val, **loaders_config), batch_size=batch_size, shuffle=True)
+        'val': DataLoader(clazz(val_list, output_val, **loaders_config), batch_size=batch_size, shuffle=True),
+        'test': DataLoader(clazz(test_list, output_test, **loaders_config), batch_size=batch_size, shuffle=True)
         }

@@ -9,7 +9,7 @@ from tensorboardX import SummaryWriter
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch_geometric.data import Data
 
-from utils.helper import RunningAverage, save_checkpoint, load_checkpoint, get_logger
+from utils.helper import RunningAverage, save_checkpoint, load_checkpoint, get_logger, get_batch_size
 from utils.visualize import VisdomLinePlotter
 
 class Trainer:
@@ -169,11 +169,11 @@ class Trainer:
 
             # compute loss criterion
             loss = self.loss_criterion(output, target)
-            train_losses.update(loss.item(), self._batch_size(target))
+            train_losses.update(loss.item(), get_batch_size(target))
 
             # compute eval criterion
             eval_score = self.eval_criterion(output, target)
-            train_eval_scores.update(eval_score.item(), self._batch_size(target))
+            train_eval_scores.update(eval_score.item(), get_batch_size(target))
 
             # compute gradients and update parameters
             self.optimizer.zero_grad()
@@ -244,11 +244,11 @@ class Trainer:
 
                     # compute loss criterion
                     loss = self.loss_criterion(output, target)
-                    val_losses.update(loss.item(), self._batch_size(target))
+                    val_losses.update(loss.item(), get_batch_size(target))
 
                     # compute eval criterion
                     eval_score = self.eval_criterion(output, target)
-                    val_scores.update(eval_score.item(), self._batch_size(target))
+                    val_scores.update(eval_score.item(), get_batch_size(target))
 
                 self._log_stats('val', val_losses.avg, val_scores.avg)
                 self.logger.info(f'Validation finished. Loss: {val_losses.avg}. Evaluation score: {val_scores.avg}')
@@ -310,12 +310,3 @@ class Trainer:
         for name, value in self.model.named_parameters():
             self.writer.add_histogram(name, value.data.cpu().numpy(), self.num_iterations)
             self.writer.add_histogram(name + '/grad', value.grad.data.cpu().numpy(), self.num_iterations)
-
-    @staticmethod
-    def _batch_size(input):
-        if isinstance(input, list) or isinstance(input, tuple):
-            return input[0].size(0)
-        if isinstance(input, Data):
-            return input.num_graphs
-        else:
-            return input.size(0)

@@ -139,7 +139,7 @@ def main():
                               logger=logger)
     # Start training
     trainer.fit()
-
+    print('best evaluation score is:', trainer.best_eval_score)
 
 if __name__ == '__main__':
     main()
