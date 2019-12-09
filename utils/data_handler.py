@@ -37,8 +37,31 @@ def train_val_test_split(path, output, train_ratio, val_ratio, test_ratio):
     np.savetxt(os.path.join(output,'test_list.txt'), test_list, fmt='%s', delimiter='\n')
     print('filelist saved to:', output)
 
-#train_val_test_split('/home/sherry/Dropbox/PhD/Data/ABIDE/ABIDE_Connectomes', '/home/sherry/Dropbox/PhD/Data/ABIDE/abide_exp01', 0.7, 0.2, 0.1)
 #train_val_test_split('/home/sherry/Dropbox/PhD/Data/ABIDE/abide_qc.txt', '/home/sherry/Dropbox/PhD/Data/ABIDE/abide_exp01', 0.7, 0.2, 0.1)
+
+def cross_validation_split(path, output, num_fold, sel_fold = 0, shuffle = True):
+    if os.path.splitext(path)[1] == '.txt':
+        filelist = np.loadtxt(path, dtype=str)
+    else:
+        filelist = os.listdir(path)
+    if shuffle:
+        np.random.shuffle(filelist)
+        np.savetxt(os.path.join(output,'all_list_shuffled.txt'), filelist, fmt='%s', delimiter='\n')
+
+    ind0 = int(len(filelist) / num_fold) * sel_fold
+    ind1 = int(len(filelist) / num_fold) * (sel_fold + 1)
+
+    train_list = np.concatenate((filelist[ind1:], filelist[0:ind0]))
+    val_list = filelist[ind0:ind1]
+    test_list = val_list
+
+    print('train:', len(train_list), 'val:', len(val_list), 'test:', len(test_list))
+    np.savetxt(os.path.join(output,'train_list.txt'), train_list, fmt='%s', delimiter='\n')
+    np.savetxt(os.path.join(output,'val_list.txt'), val_list, fmt='%s', delimiter='\n')
+    np.savetxt(os.path.join(output,'test_list.txt'), test_list, fmt='%s', delimiter='\n')
+    print('filelist saved to:', output)
+
+#cross_validation_split('/home/sherry/Dropbox/PhD/Data/ABIDE/abide_exp01/all_list_shuffled.txt', '/home/sherry/Dropbox/PhD/Data/ABIDE/abide_exp01', 10, 9, False)
 
 def arrange_data(path, output):
     subpaths = [f.path for f in os.scandir(path) if f.is_dir()]

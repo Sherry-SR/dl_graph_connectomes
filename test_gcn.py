@@ -13,8 +13,7 @@ from models.gcn.losses import get_loss_criterion
 from models.gcn.metrics import get_evaluation_metric
 
 CONFIG_PATH = "./configs/train_gcn_basic_01.yaml"
-MODEL_PATH = "/home/sherry/Dropbox/PhD/Data/ABIDE/abide_exp01/results/model2/last_checkpoint.pytorch"
-TEST_LIST = "/home/sherry/Dropbox/PhD/Data/ABIDE/abide_exp01/val_list.txt"
+MODEL_PATH = "/home/sherry/Dropbox/PhD/Data/ABIDE/abide_exp01/results/model_10fold/fold9/best_checkpoint.pytorch"
 
 def validate(model, val_loader, loss_criterion, eval_criterion, device):
 
@@ -58,7 +57,6 @@ def main():
     parser = argparse.ArgumentParser(description='GCN training')
     parser.add_argument('--config', type=str, help='Path to the YAML config file', default = CONFIG_PATH)
     parser.add_argument('--model', type=str, help='Path to the model parameters', default = MODEL_PATH)
-    parser.add_argument('--test', type=str, help='Path to the testing list file', default = TEST_LIST)
     args = parser.parse_args()
 
     # Load experiment configuration
