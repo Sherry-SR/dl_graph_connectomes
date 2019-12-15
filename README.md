@@ -2,7 +2,7 @@
 DL course project
 
 #### Desciption:
-This is the final project for ESE 546 Principles of Deep Learning at the University of Pennsylvania, a graduate-level deep learning course focusing on Optimization, Neural Architecture, Learning Theory, MCMC, and Variational Inferece. We did our final project on the topic of  Graph Convolutional Networks (GCNs) applied to Neural Connectomes Analysis using novel normalization layers. Our project is based on the previous works of Khosla et al. and Zhang et al., respectively the fundamental works in applying GCNs to the connectome analysis and extracting embeddings for graph structure inference.
+This is the final project for ESE 546 Principles of Deep Learning at the University of Pennsylvania, a graduate-level deep learning course focusing on Optimization, Neural Architecture, Learning Theory, MCMC, and Variational Inference. We did our final project on the topic of  Graph Convolutional Networks (GCNs) applied to Neural Connectomes Analysis using novel normalization layers. Our project is based on the previous works of Khosla et al. and Zhang et al., respectively the fundamental works in applying GCNs to the connectome analysis and extracting embeddings for graph structure inference.
 
 
 #### Goal:
