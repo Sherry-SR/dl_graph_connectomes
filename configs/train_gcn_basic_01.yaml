@@ -33,7 +33,7 @@ optimizer:
   # initial learning rate
   learning_rate: 0.1
   # weight decay
-  weight_decay: 0.1
+  weight_decay: 0.001
 # loss function configuration
 loss:
   # loss function to be used during training

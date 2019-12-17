@@ -46,7 +46,7 @@ class Trainer:
                  validate_after_iters=None, log_after_iters=None,
                  validate_iters=None, num_iterations=0, num_epoch=0,
                  eval_score_higher_is_better=True, best_eval_score=None,
-                 logger=None):
+                 logger=None, inference_config = None):
         if logger is None:
             self.logger = get_logger('Trainer', level=logging.DEBUG)
         else:
@@ -68,6 +68,7 @@ class Trainer:
         self.log_after_iters = log_after_iters
         self.validate_iters = validate_iters
         self.eval_score_higher_is_better = eval_score_higher_is_better
+        self.inference_config = inference_config
         logger.info(f'eval_score_higher_is_better: {eval_score_higher_is_better}')
 
         if best_eval_score is not None:
@@ -85,7 +86,8 @@ class Trainer:
         self.num_epoch = num_epoch
 
     @classmethod
-    def from_checkpoint(cls, checkpoint_path, model, optimizer, lr_scheduler, loss_criterion, eval_criterion, device, loaders, logger=None):
+    def from_checkpoint(cls, checkpoint_path, model, optimizer, lr_scheduler, loss_criterion, eval_criterion,
+                        device, loaders, logger=None, inference_config = None):
         logger.info(f"Loading checkpoint '{checkpoint_path}'...")
         state = load_checkpoint(checkpoint_path, model, optimizer)
         logger.info(
@@ -103,7 +105,7 @@ class Trainer:
                    validate_after_iters=state['validate_after_iters'],
                    log_after_iters=state['log_after_iters'],
                    validate_iters=state['validate_iters'],
-                   logger=logger)
+                   logger=logger, inference_config = inference_config)
 
     @classmethod
     def from_pretrained(cls, pre_trained, model, optimizer, lr_scheduler, loss_criterion, eval_criterion,
@@ -112,7 +114,7 @@ class Trainer:
                         validate_after_iters=None, log_after_iters=None,
                         validate_iters=None, num_iterations=0, num_epoch=0,
                         eval_score_higher_is_better=True, best_eval_score=None,
-                        logger=None):
+                        logger=None, inference_config = None):
         logger.info(f"Logging pre-trained model from '{pre_trained}'...")
         load_checkpoint(pre_trained, model, None)
         checkpoint_dir = os.path.split(pre_trained)[0]
@@ -128,7 +130,7 @@ class Trainer:
                    validate_after_iters=validate_after_iters,
                    log_after_iters=log_after_iters,
                    validate_iters=validate_iters,
-                   logger=logger)
+                   logger=logger, inference_config = inference_config)
 
     def fit(self):
         for _ in range(self.num_epoch, self.max_num_epochs):
@@ -165,7 +167,7 @@ class Trainer:
         for i, t in enumerate(train_loader):
             target = t.y.to(self.device)
             input = t.to(self.device)
-            output = self.model(input)
+            output, h = self.model(input)
 
             # compute loss criterion
             loss = self.loss_criterion(output, target)
@@ -209,6 +211,11 @@ class Trainer:
                 self._save_checkpoint(is_best)
                 self._log_params()
 
+                if self.inference_config is not None:
+                    if (self.num_iterations >= self.inference_config['infer_init_iters'] and
+                        self.num_iterations % self.inference_config['infer_after_iters'] == 0):
+                        self.inference(self.loaders, h)
+
             if self.num_iterations >= self.max_num_iterations:
                 self.logger.info(
                     f'Maximum number of iterations {self.max_num_iterations} exceeded. Finishing training...')
@@ -231,7 +238,7 @@ class Trainer:
         try:
             self.model.eval()
             with torch.no_grad():
-                for i in tqdm(range(self.validate_iters)):
+                for _ in tqdm(range(self.validate_iters)):
                     try:
                         t = next(val_iterator)
                     except StopIteration:
@@ -240,7 +247,7 @@ class Trainer:
 
                     target = t.y.to(self.device)
                     input = t.to(self.device)
-                    output = self.model(input)
+                    output, _ = self.model(input)
 
                     # compute loss criterion
                     loss = self.loss_criterion(output, target)
@@ -259,7 +266,11 @@ class Trainer:
         finally:
             # set back in training mode
             self.model.train()
-
+        
+    def inference(self, loaders, h):
+        self.logger.info(f'Infering hidden data... ')
+        return
+    
     def _is_best_eval_score(self, eval_score):
         if self.eval_score_higher_is_better:
             is_best = eval_score > self.best_eval_score

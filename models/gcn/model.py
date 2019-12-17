@@ -12,7 +12,6 @@ class GcnNet(torch.nn.Module):
 
         self.conv1 = GCNConv(in_channels, 40)
         self.bn = torch.nn.BatchNorm1d(num_nodes)
-        #self.bn = torch.nn.InstanceNorm1d(40)
         self.conv2 = GCNConv(40, 1)
 
         self.fc1 = torch.nn.Linear(num_nodes, 50)
@@ -24,21 +23,19 @@ class GcnNet(torch.nn.Module):
         epsilon = 1e-10
         h = self.conv1(x, edge_index, edge_attr)
         h = F.leaky_relu(h)
-        # h = h.view(data.num_graphs,h.shape[-1],h.shape[0]//data.num_graphs)
-        # h = self.bn(h)
-        # h = h.view(data.num_graphs*h.shape[-1],h.shape[1])
+
         h = h.view(data.num_graphs,h.shape[0]//data.num_graphs,h.shape[-1])
         h = self.bn(h)
         h = h.view(data.num_graphs*h.shape[1],h.shape[-1])
 
         h = self.conv2(h, edge_index, edge_attr)
         h = F.leaky_relu(h)
-        out = h.view(data.num_graphs, -1)
-        out = (out - torch.mean(out, dim = 1, keepdim = True)) / (torch.var(out, dim = 1, keepdim = True) + epsilon)
-
+        h = h.view(data.num_graphs, -1)
+        
+        out = (h - torch.mean(h, dim = 1, keepdim = True)) / (torch.var(h, dim = 1, keepdim = True) + epsilon)
         out = self.fc1(out)
         out = self.relu(out)
         out = F.dropout(out, p = 0.5, training = self.training)
         out = self.fc2(out)
 
-        return out
+        return out, h
