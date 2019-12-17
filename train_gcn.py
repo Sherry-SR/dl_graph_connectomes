@@ -23,12 +23,14 @@ def _create_trainer(config, model, optimizer, lr_scheduler, loss_criterion, eval
     pre_trained = trainer_config.get('pre_trained', None)
     validate_iters = trainer_config.get('validate_iters', None)
 
+    inference_config = trainer_config.get('inference', None)
+
     if resume is not None:
         # continue training from a given checkpoint
         return Trainer.from_checkpoint(resume, model,
                                         optimizer, lr_scheduler, loss_criterion,
                                         eval_criterion, config['device'], loaders,
-                                        logger=logger)
+                                        logger=logger, inference_config = inference_config)
     elif pre_trained is not None:
         # fine-tune a given pre-trained model
         return Trainer.from_pretrained(pre_trained, model, optimizer, lr_scheduler, loss_criterion,
@@ -38,7 +40,7 @@ def _create_trainer(config, model, optimizer, lr_scheduler, loss_criterion, eval
                                         validate_after_iters=trainer_config['validate_after_iters'],
                                         log_after_iters=trainer_config['log_after_iters'],
                                         eval_score_higher_is_better=trainer_config['eval_score_higher_is_better'],
-                                        logger=logger, validate_iters = validate_iters)
+                                        logger=logger, validate_iters = validate_iters, inference_config = inference_config)
     else:
         # start training from scratch
         return Trainer(model, optimizer, lr_scheduler, loss_criterion, eval_criterion,
@@ -48,7 +50,7 @@ def _create_trainer(config, model, optimizer, lr_scheduler, loss_criterion, eval
                             validate_after_iters=trainer_config['validate_after_iters'],
                             log_after_iters=trainer_config['log_after_iters'],
                             eval_score_higher_is_better=trainer_config['eval_score_higher_is_better'],
-                            logger=logger, validate_iters = validate_iters)
+                            logger=logger, validate_iters = validate_iters, inference_config = inference_config)
 
 
 def _create_optimizer(config, model):

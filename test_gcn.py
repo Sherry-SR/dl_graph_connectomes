@@ -13,7 +13,7 @@ from models.gcn.losses import get_loss_criterion
 from models.gcn.metrics import get_evaluation_metric
 
 CONFIG_PATH = "./configs/train_gcn_basic_01.yaml"
-MODEL_PATH = "/home/sherry/Dropbox/PhD/Data/ABIDE/abide_exp01/results/model_10fold/fold9/best_checkpoint.pytorch"
+MODEL_PATH = "/home/sherry/Dropbox/PhD/dl_graph_connectomes/checkpoints/best_checkpoint.pytorch"
 
 def validate(model, val_loader, loss_criterion, eval_criterion, device):
 
@@ -24,12 +24,12 @@ def validate(model, val_loader, loss_criterion, eval_criterion, device):
         
     model.eval()
     with torch.no_grad():
-        for i in tqdm(range(len(val_loader))):
+        for _ in tqdm(range(len(val_loader))):
             t = next(val_iterator)
 
             target = t.y.to(device)
             input = t.to(device)
-            output = model(input)
+            output, _ = model(input)
 
             # compute loss criterion
             loss = loss_criterion(output, target)
@@ -76,7 +76,7 @@ def main():
     else:
         model = _get_model(module_path, config)
     
-    state = load_checkpoint(args.model, model)
+    load_checkpoint(args.model, model)
 
     # put the model on GPUs
     model = model.to(config['device'])
